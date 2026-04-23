@@ -1,0 +1,24 @@
+services:
+  frontend:
+    build:
+      context: ./frontend
+      target: dev
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules    # анонімний volume щоб не перезаписував node_modules
+    command: npm run dev -- --host 0.0.0.0
+    environment:
+      - VITE_WS_URL=ws://localhost:8000
+
+  backend:
+    volumes:
+      - ./backend:/app
+    ports:
+      - "8000:8000"    # відкритий для локальної відладки
+    command: uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+
+  redis:
+    ports:
+      - "6379:6379"    # відкритий для локальної відладки
