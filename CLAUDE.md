@@ -47,6 +47,31 @@ docker compose exec frontend npm run test
 docker compose exec frontend npx playwright test
 ```
 
+## Безпека секретів
+
+**Заборонено** будь-де у проекті (код, конфіги, коміти, логи, коментарі):
+- GitHub токени (`ghp_*`, `github_pat_*`)
+- API ключі, паролі, JWT secrets
+- Connection strings з credentials (`redis://:password@...`)
+- Будь-які рядки що виглядають як секрети (довгі випадкові рядки у конфігах)
+
+**При виявленні секрету** — негайно зупинитись і повідомити користувача, не записувати у файл і не виконувати команду.
+
+**Безпечне зберігання секретів у цьому проекті:**
+
+| Де потрібен секрет | Як зберігати |
+|---|---|
+| Git push / GitHub API | `~/.git-credentials` (chmod 600) + `~/.bashrc` export |
+| Бекенд (Redis, JWT, DB) | `.env` файл у корені (є в `.gitignore`) |
+| Docker production | змінні середовища в `docker-compose.yml` через `${VAR}` без значень |
+| CI/CD | GitHub Secrets → `${{ secrets.NAME }}` |
+| Фронтенд build-time | `VITE_*` змінні в `.env.local` (в `.gitignore`) |
+
+**Перевірки перед кожним комітом:**
+- Файли `.env`, `.env.local`, `~/.git-credentials` — в `.gitignore` і не в staging
+- `settings.json` / `settings.local.json` — не містять токенів у dозволах
+- Жоден новий файл не містить рядків схожих на токени
+
 ## Підтримка агентів
 
 Після кожної зміни що впливає на поведінку, правила, архітектуру або контракти проекту — запропонувати оновлення відповідних файлів у `.claude/agents/` через агент `agent-sync` і чекати підтвердження від користувача перед записом.
