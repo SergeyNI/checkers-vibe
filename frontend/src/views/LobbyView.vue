@@ -69,14 +69,17 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useLobbyStore } from '../stores/useLobbyStore'
+import { useSessionStore } from '../stores/useSessionStore'
 
 const router = useRouter()
 const lobbyStore = useLobbyStore()
+const session = useSessionStore()
 
-const playerName = ref('')
+const playerName = ref(session.playerName)
+watch(playerName, (name) => { session.playerName = name })
 const rules = ref('ukrainian')
 const timerType = ref('game_clock')
 const timerMinutes = ref(10)

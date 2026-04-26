@@ -32,6 +32,12 @@ class PlayerClock:
             self.is_running = False
             self._started_at = None
 
+    def live_remaining(self, now: datetime) -> float:
+        if not self.is_running or self._started_at is None:
+            return self.remaining_seconds
+        elapsed = (now - self._started_at).total_seconds()
+        return max(0.0, self.remaining_seconds - elapsed)
+
     def is_expired(self) -> bool:
         return self.remaining_seconds <= 0
 
@@ -46,6 +52,8 @@ class GameTimer:
         from .piece import Color
         for c, clock in self.clocks.items():
             clock.stop(now)
+        if self.config.type == TimerType.MOVE:
+            self.clocks[color].remaining_seconds = float(self.config.duration_seconds)
         self.clocks[color].start(now)
         if self.config.type == TimerType.MOVE:
             from datetime import timedelta
@@ -55,5 +63,5 @@ class GameTimer:
         self.clocks[color].stop(now)
         self.move_deadline = None
 
-    def is_expired(self, color) -> bool:
-        return self.clocks[color].is_expired()
+    def is_expired(self, color, now: datetime) -> bool:
+        return self.clocks[color].live_remaining(now) <= 0

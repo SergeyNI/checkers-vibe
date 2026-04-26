@@ -21,12 +21,16 @@ import { computed, watch, onUnmounted } from 'vue'
 import { useGameStore } from '../stores/useGameStore'
 import { useSessionStore } from '../stores/useSessionStore'
 import { useTimer } from '../composables/useTimer'
+import { useWebSocket } from '../composables/useWebSocket'
 
 const gameStore = useGameStore()
 const session = useSessionStore()
+const ws = useWebSocket()
 
 const game = computed(() => gameStore.game)
-const { displaySeconds, format, startCountdown, stopCountdown } = useTimer(game)
+const { displaySeconds, format, startCountdown, stopCountdown } = useTimer(game, (color) => {
+  ws.checkTimer(color)
+})
 
 const myColor = computed(() => session.playerColor)
 
@@ -35,7 +39,9 @@ function isActive(color: 'white' | 'black') {
 }
 
 function isLow(color: 'white' | 'black') {
-  return displaySeconds.value[color] < 30
+  const initial = game.value?.timer?.config?.duration_seconds ?? 0
+  if (initial <= 0) return false
+  return displaySeconds.value[color] <= initial / 10
 }
 
 function playerName(color: 'white' | 'black') {

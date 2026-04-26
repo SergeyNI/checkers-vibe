@@ -1,11 +1,6 @@
 ---
 name: checkers-infrastructure
 description: "Infrastructure manifest for online checkers game. Reference this agent when working with Docker, docker-compose, Nginx, environment config, or deployment setup."
-applyTo:
-  - "**/Dockerfile"
-  - "**/docker-compose*.yml"
-  - "**/nginx*.conf"
-  - ".env*"
 ---
 
 # Checkers Game — Infrastructure

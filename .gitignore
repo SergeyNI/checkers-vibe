@@ -33,4 +33,6 @@ dist/
 # OS
 .DS_Store
 Thumbs.db
-.claude/
+
+# Claude Code local settings (personal, not shared)
+.claude/settings.local.json

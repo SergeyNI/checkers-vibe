@@ -1,13 +1,6 @@
 ---
 name: checkers-tests
 description: "Testing manifest for online checkers game. Reference this agent when writing or running tests for backend (pytest) or frontend (Vitest, Playwright). Covers unit, integration, and E2E tests."
-applyTo:
-  - "**/test_*.py"
-  - "**/*_test.py"
-  - "**/*.spec.ts"
-  - "**/*.test.ts"
-  - "**/tests/**/*"
-  - "**/e2e/**/*"
 ---
 
 # Checkers Game — Testing
@@ -136,9 +129,17 @@ def test_game_paused_when_both_offline()
 
 # GameTimer
 def test_move_timer_resets_on_new_turn()
+def test_move_timer_resets_remaining_seconds_on_start_turn()
+    # для MOVE-типу: start_turn скидає remaining_seconds до duration_seconds
 def test_game_clock_decrements_only_active_player()
 def test_timer_stops_after_last_capture_in_chain()
-def test_expired_timer_ends_game()
+def test_expired_timer_ends_game_with_loss_for_expired_player()
+def test_is_expired_uses_live_remaining_not_cached_value()
+    # is_expired(color, now) враховує поточний відлік, не тільки збережений remaining_seconds
+def test_expire_by_timeout_sets_winner_and_finishes_game()
+    # expire_by_timeout: winner = суперник, state = FINISHED
+def test_apply_move_returns_without_processing_if_timer_expired()
+    # apply_move перевіряє is_expired до ходу; якщо True — завершує гру, хід не виконується
 ```
 
 ---
@@ -183,6 +184,12 @@ def redis_client()           # тестовий Redis (окрема DB)
 ## Фронтенд — unit тести
 
 ```typescript
+// useSessionStore.spec.ts
+it('reads sessionId, playerId, playerColor, playerName from localStorage on init')
+it('persists changes to localStorage via watch on any field change')
+it('reset() clears sessionId, playerId, playerColor but keeps playerName')
+it('connected and reconnecting are always false on init regardless of localStorage')
+
 // useGameStore.spec.ts
 it('updates pieces on move_made message')
 it('sets pendingCapture on capture start')
@@ -194,16 +201,31 @@ it('returns allowed next cells from current position')
 it('returns empty array when chain complete')
 it('handles multiple branching capture paths')
 
+// useWebSocket.spec.ts
+it('is a singleton: multiple calls share the same _ws instance')
+it('checkTimer sends {type: "check_timer", color} message')
+it('disconnect sets _ws to null')
+
 // useTimer.spec.ts
 it('counts down locally between ws updates')
 it('syncs with server on game_snapshot')
-it('emits expired when time runs out')
+it('emits warning when remaining time reaches 1/10 of initial duration')
+it('calls onExpired callback when time runs out')
+it('does not call onExpired more than once per turn (expiredFired guard)')
+it('clears expiredFired guard on new game_snapshot')
+it('does not emit warning more than once per turn')
 
 // Board.spec.ts
 it('renders 32 cells for 8x8 board')
 it('renders 50 cells for 10x10 board')
 it('highlights valid cells from captureChains')
 it('does not highlight cells not in captureChains')
+
+// GameTimer.spec.ts
+it('shows warning style when time is at or below 1/10 of initial duration')
+it('shows normal style when time is above 1/10 threshold')
+it('warning threshold uses duration_seconds from config, not hardcoded 30s')
+it('calls ws.checkTimer when useTimer triggers onExpired')
 ```
 
 ---
@@ -216,13 +238,17 @@ test('two players complete a full game')
 test('capture chain: player must complete all mandatory captures')
 test('promotion: man becomes queen on last row')
 test('draw offer: player1 offers, player2 accepts')
-test('timer expires: game ends with correct winner')
+test('timer expires: game ends with loss for the player whose time ran out')
+test('timer warning: visual alert appears when 1/10 time remains')
 
 // reconnect.spec.ts
 test('player reconnects and game state is restored')
 test('timer is preserved after reconnect')
 test('pending capture chain is restored after reconnect')
 test('game pauses when both players disconnect')
+test('hard refresh: sessionId persists in localStorage → game reconnects automatically')
+test('navigation back button: session.reset() clears sessionId → no reconnect on next visit')
+test('player name persists in lobby after game ends and after page reload')
 
 // lobby.spec.ts
 test('player creates a room with Ukrainian rules 8x8')
@@ -265,3 +291,13 @@ docker compose exec frontend npx playwright test
 - [ ] Redis тести використовують окрему тестову базу (DB index 1)
 - [ ] WebSocket тести використовують `pytest-asyncio`
 - [ ] Фронтенд не тестує логіку валідності ходів — це відповідальність бекенду
+- [ ] Є тест що перевіряє появу попередження при залишку ≤ 1/10 початкового часу (динамічний поріг з config)
+- [ ] Є тест що перевіряє завершення гри програшем гравця чий час вийшов
+- [ ] Є тест що `is_expired` рахує через `live_remaining`, а не кешований `remaining_seconds`
+- [ ] Є тест що `onExpired` callback спрацьовує лише раз (guard `_expiredFired` скидається на новому snapshot)
+- [ ] Є тест що `apply_move` ігнорує хід якщо час вийшов і завершує гру через `expire_by_timeout`
+- [ ] Є тест singleton-поведінки `useWebSocket` і методу `checkTimer`
+- [ ] Є тест що `useSessionStore` читає дані з localStorage при ініціалізації
+- [ ] Є тест що `reset()` не скидає `playerName`
+- [ ] Є тест що `connected` і `reconnecting` завжди `false` при старті незалежно від localStorage
+- [ ] Є E2E тест розмежування hard refresh (reconnect) та навігації (без reconnect)

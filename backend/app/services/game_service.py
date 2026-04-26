@@ -56,6 +56,10 @@ def apply_move(game: Game, player_id: str, from_cell: Cell, to_cell: Cell, now: 
     _assert_active(game)
     _assert_turn(game, player_id)
 
+    if game.timer.is_expired(game.current_turn, now):
+        expire_by_timeout(game, game.current_turn, now)
+        return
+
     rules: BaseRules = game.rules
 
     if game.pending_capture is not None:
@@ -89,6 +93,15 @@ def respond_draw(game: Game, player_id: str, accepted: bool, now: datetime | Non
         _finish_draw(game, DrawReason.AGREEMENT, now)
     else:
         game.draw_offer.status = OfferStatus.DECLINED
+
+
+def expire_by_timeout(game: Game, color: Color, now: datetime | None = None) -> None:
+    now = now or datetime.now(timezone.utc)
+    opponent = Color.BLACK if color == Color.WHITE else Color.WHITE
+    game.winner = opponent
+    game.state = GameState.FINISHED
+    game.timer.stop_turn(color, now)
+    game.updated_at = now
 
 
 def resign(game: Game, player_id: str, now: datetime | None = None) -> None:

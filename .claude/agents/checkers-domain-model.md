@@ -1,10 +1,6 @@
 ---
 name: checkers-domain-model
 description: "Domain model manifest for online checkers game. Reference this agent when creating models, services, controllers, or Redis persistence. Covers board types 8x8 and 10x10, multiple rule sets, diagonal line geometry, timers, draw logic, and WebSocket session recovery."
-applyTo:
-  - "**/*.py"
-  - "**/*.vue"
-  - "**/*.ts"
 ---
 
 # Checkers Game — Domain Model
@@ -171,15 +167,21 @@ PlayerClock
   — color: Color
   — remaining_seconds: float
   — is_running: bool
+  — методи:
+      live_remaining(now: datetime) -> float
+          # реальний залишок з урахуванням поточного відліку
+          # якщо is_running: remaining_seconds - elapsed; інакше: remaining_seconds
 
 GameTimer
   — config: TimerConfig
   — clocks: dict[Color, PlayerClock]
   — move_deadline: datetime | None   # тільки для MOVE
   — методи:
-      start_turn(color)              # запускає годинник гравця
+      start_turn(color)              # запускає годинник гравця;
+                                     # для MOVE-типу скидає remaining_seconds до duration_seconds
       stop_turn(color)               # зупиняє, фіксує витрачений час
-      is_expired(color) -> bool
+      is_expired(color, now: datetime) -> bool
+                                     # використовує live_remaining(now) — точний live-розрахунок
 
 # GameTimer серіалізується в Redis разом з грою — час не скидається після розриву
 ```
@@ -263,7 +265,7 @@ RedisGameSnapshot
 | `RulesFactory` | повертає екземпляр правил + відповідну Board константу (`BOARD_8` / `BOARD_10`) |
 | `BoardService` | розставляє початкові фігури згідно правил |
 | `MoveService` | валідує хід, виконує захоплення, серії захоплень, просування в дамки, керує `CaptureInProgress` |
-| `GameService` | старт гри, хід, зміна черги, визначення переможця, нічия, завершення |
+| `GameService` | старт гри, хід, зміна черги, визначення переможця, нічия, завершення; `expire_by_timeout(game, color, now)` — завершує гру програшем; `apply_move` перевіряє `is_expired` перед обробкою ходу |
 | `GameSerializer` | `to_dict(game) -> dict`, `from_dict(data) -> Game` — для Redis |
 | `RedisGameStore` | `save(game)`, `load(game_id) -> Game`, `delete(game_id)`, `exists(game_id) -> bool` |
 | `SessionManager` | WebSocket-з'єднання, heartbeat, `is_connected()`, відновлення після розриву |
@@ -290,6 +292,12 @@ player:{player_id}:game  — поточна game_id гравця, TTL 24 год
 5. `SessionManager` знаходить `game_id` за `session:{session_id}` у Redis
 6. `RedisGameStore.load(game_id)` → відновлює стан включно з таймером
 7. Сервер надсилає клієнту повний стан гри (`game_snapshot`) і продовжує
+
+# Клієнтський рівень відновлення (localStorage):
+# — Фронт зберігає sessionId у localStorage: hard refresh не очищає sessionId
+# — При hard refresh `onUnmounted` не спрацьовує → sessionId залишається → крок 4 виконується автоматично
+# — При навігації (кнопка / back button) `onUnmounted` спрацьовує → session.reset() → sessionId = null → reconnect не відбувається
+# — playerName зберігається в localStorage і не скидається між іграми
 
 ### Що серіалізується (GameSerializer)
 
@@ -332,6 +340,10 @@ player:{player_id}:game  — поточна game_id гравця, TTL 24 год
 - [ ] `tentatively_captured` перевіряється щоб не захопити одну фігуру двічі
 - [ ] `Player` не містить `connected` — стан з'єднання в `SessionManager`
 - [ ] `GameTimer` серіалізується в Redis — час не скидається після розриву
+- [ ] `is_expired(color, now)` приймає `now: datetime` і рахує через `live_remaining` — не покладається на кешоване `remaining_seconds`
+- [ ] `start_turn` для MOVE-типу скидає `remaining_seconds` до `duration_seconds` перед запуском
+- [ ] `apply_move` перевіряє `is_expired` до обробки ходу; якщо True — викликає `expire_by_timeout` і повертає без ходу
+- [ ] `expire_by_timeout` встановлює `winner` на суперника і переводить гру у `FINISHED`
 - [ ] `position_history` зберігає хеші (не повні стани)
 - [ ] `winner: None` + `state: FINISHED` = нічия
 - [ ] При кожному ході зберігається знімок у Redis

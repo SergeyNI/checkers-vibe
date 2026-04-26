@@ -1,11 +1,6 @@
 ---
 name: change-critic
 description: "Critical reviewer for proposed changes to the checkers game. Use this agent when evaluating new models, refactors, or architectural decisions. Identifies negative consequences, mixed concerns, broken contracts, and missing edge cases before changes are implemented."
-applyTo:
-  - "**/*.py"
-  - "**/*.vue"
-  - "**/*.ts"
-  - "**/*.md"
 ---
 
 # Change Critic
@@ -48,6 +43,9 @@ applyTo:
 - [ ] Чи серіалізується новий стан в Redis?
 - [ ] Чи відновлюється цей стан коректно після reconnect?
 - [ ] Чи встановлено TTL для нових Redis-ключів?
+- [ ] Чи враховано що `onUnmounted` не спрацьовує при hard refresh браузера?
+- [ ] Чи нові поля стору правильно розмежовані: персистентні (sessionId, playerName) vs ephemeral (connected, reconnecting)?
+- [ ] Чи `reset()` скидає рівно те що потрібно — і не зачіпає `playerName`?
 
 ### 5. Конкурентний доступ
 - [ ] Чи може два WebSocket-повідомлення змінити стан одночасно?
@@ -57,6 +55,14 @@ applyTo:
 - [ ] Чи зупиняється таймер у правильний момент?
 - [ ] Чи не скидається час після reconnect?
 - [ ] Чи враховано що таймер іде під час серії захоплень?
+- [ ] Чи завершується гра програшем гравця коли його час вийшов?
+- [ ] Чи завершення по таймеру обробляється на бекенді (не фронті)?
+- [ ] Чи надсилається `game_finished` всім гравцям після закінчення часу?
+- [ ] Чи `is_expired` використовує `live_remaining(now)` а не кешований `remaining_seconds`?
+- [ ] Чи `start_turn` скидає `remaining_seconds` для MOVE-типу (не залишає значення з попереднього ходу)?
+- [ ] Чи `apply_move` перевіряє таймер до обробки ходу (захист від гонки між ходом і закінченням часу)?
+- [ ] Чи `check_timer` не є єдиним шляхом завершення по таймеру (бекенд перевіряє самостійно в `apply_move`)?
+- [ ] Чи `onExpired` callback у фронті не спрацьовує двічі підряд (guard `_expiredFired`)?
 
 ### 7. Серія захоплень
 - [ ] Чи не дозволяє зміна захопити одну фігуру двічі?

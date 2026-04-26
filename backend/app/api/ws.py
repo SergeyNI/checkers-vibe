@@ -15,6 +15,7 @@ from ..services.game_serializer import GameSerializer
 from ..services.game_service import (
     GameError,
     apply_move,
+    expire_by_timeout,
     offer_draw,
     resign,
     respond_draw,
@@ -149,6 +150,11 @@ async def websocket_endpoint(ws: WebSocket, session_id: str) -> None:
                 elif msg_type == "resign":
                     resign(game, player_id, now)
                     await _broadcast_snapshot(game, manager)
+
+                elif msg_type == "check_timer":
+                    if game.state == GameState.ACTIVE and game.timer.is_expired(game.current_turn, now):
+                        expire_by_timeout(game, game.current_turn, now)
+                        await _broadcast_snapshot(game, manager)
 
                 else:
                     await manager.send(session_id, error_msg(f"Unknown message type: {msg_type!r}"))
