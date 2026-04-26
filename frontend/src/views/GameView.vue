@@ -28,7 +28,7 @@
             <span class="rules-badge">{{ game.rules_name }}</span>
             <span class="size-badge">{{ game.board_size }}×{{ game.board_size }}</span>
           </div>
-          <GameControls @offer-draw="ws.offerDraw()" @resign="ws.resign()" />
+          <GameControls @offer-draw="ws.offerDraw()" @resign="ws.resign()" @go-lobby="goToLobby" />
           <DrawOffer @respond="ws.respondDraw($event)" />
         </aside>
 

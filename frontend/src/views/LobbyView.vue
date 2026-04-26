@@ -43,7 +43,6 @@
       <section class="panel rooms-panel">
         <div class="rooms-header">
           <h2>Відкриті кімнати</h2>
-          <button class="btn btn-sm" @click="lobbyStore.fetchRooms()">↻ Оновити</button>
         </div>
 
         <div v-if="lobbyStore.loading" class="loading">Завантаження...</div>
@@ -72,7 +71,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useLobbyStore } from '../stores/useLobbyStore'
 import { useSessionStore } from '../stores/useSessionStore'
@@ -98,7 +97,16 @@ watch(timerType, (t) => {
   timerValue.value = t === 'move' ? 60 : 10
 })
 
-onMounted(() => lobbyStore.fetchRooms())
+let _pollTimer: ReturnType<typeof setInterval> | null = null
+
+onMounted(() => {
+  lobbyStore.fetchRooms()
+  _pollTimer = setInterval(() => lobbyStore.fetchRooms(), 3000)
+})
+
+onUnmounted(() => {
+  if (_pollTimer) clearInterval(_pollTimer)
+})
 
 function rulesLabel(r: string) {
   const map: Record<string, string> = {

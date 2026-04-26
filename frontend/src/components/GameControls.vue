@@ -8,6 +8,7 @@
       {{ drawPending ? 'Нічия запропонована' : 'Запропонувати нічию' }}
     </button>
     <button class="btn btn-resign" :disabled="!canAct" @click="confirmResign">Здатись</button>
+    <button class="btn btn-lobby" @click="$emit('go-lobby')">← До списку ігор</button>
   </div>
 </template>
 
@@ -19,6 +20,7 @@ import { useSessionStore } from '../stores/useSessionStore'
 const emit = defineEmits<{
   'offer-draw': []
   resign: []
+  'go-lobby': []
 }>()
 
 const gameStore = useGameStore()
@@ -77,5 +79,13 @@ function confirmResign() {
 .btn-resign {
   background: #7a2a2a;
   color: #fff;
+}
+
+.btn-lobby {
+  background: #2a2a2a;
+  color: #888;
+  border: 1px solid #444;
+  font-size: 0.8em;
+  margin-top: 4px;
 }
 </style>
