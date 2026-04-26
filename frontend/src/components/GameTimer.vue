@@ -1,18 +1,37 @@
 <template>
   <div class="timers">
-    <div
-      v-for="color in (['black', 'white'] as const)"
-      :key="color"
-      class="clock"
-      :class="{
-        active: isActive(color),
-        low: isLow(color),
-        me: color === myColor,
-      }"
-    >
-      <span class="player-name">{{ playerName(color) }}</span>
-      <span class="time">{{ format(displaySeconds[color]) }}</span>
-    </div>
+    <div class="timer-mode">{{ timerModeLabel }}</div>
+
+    <template v-if="isMoveTimer">
+      <!-- MOVE: показуємо тільки активного гравця -->
+      <div
+        v-for="color in (['black', 'white'] as const)"
+        v-show="isActive(color)"
+        :key="color"
+        class="clock active"
+        :class="{ low: isLow(color), me: color === myColor }"
+      >
+        <span class="player-name">{{ playerName(color) }}</span>
+        <span class="time">{{ format(displaySeconds[color]) }}</span>
+      </div>
+    </template>
+
+    <template v-else>
+      <!-- GAME_CLOCK: показуємо обох гравців -->
+      <div
+        v-for="color in (['black', 'white'] as const)"
+        :key="color"
+        class="clock"
+        :class="{
+          active: isActive(color),
+          low: isLow(color),
+          me: color === myColor,
+        }"
+      >
+        <span class="player-name">{{ playerName(color) }}</span>
+        <span class="time">{{ format(displaySeconds[color]) }}</span>
+      </div>
+    </template>
   </div>
 </template>
 
@@ -33,6 +52,15 @@ const { displaySeconds, format, startCountdown, stopCountdown } = useTimer(game,
 })
 
 const myColor = computed(() => session.playerColor)
+
+const isMoveTimer = computed(() => game.value?.timer?.config?.type === 'move')
+
+const timerModeLabel = computed(() => {
+  const type = game.value?.timer?.config?.type
+  if (type === 'move') return 'На хід'
+  if (type === 'game_clock') return 'На гру'
+  return ''
+})
 
 function isActive(color: 'white' | 'black') {
   return game.value?.state === 'active' && game.value.current_turn === color
@@ -65,6 +93,14 @@ onUnmounted(stopCountdown)
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+.timer-mode {
+  font-size: 0.7em;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #888;
+  text-align: center;
 }
 
 .clock {

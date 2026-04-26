@@ -29,8 +29,8 @@
             </select>
           </div>
           <div class="field">
-            <label>Час (хв)</label>
-            <input v-model.number="timerMinutes" type="number" min="1" max="60" />
+            <label>{{ timerLabel }}</label>
+            <input v-model.number="timerValue" type="number" :min="timerMin" :max="timerMax" />
           </div>
           <button type="submit" class="btn btn-primary" :disabled="lobbyStore.loading">
             Створити кімнату
@@ -56,7 +56,10 @@
           <div v-for="room in lobbyStore.rooms" :key="room.room_id" class="room-card">
             <div class="room-info">
               <span class="room-creator">{{ room.creator_name }}</span>
-              <span class="room-meta">{{ rulesLabel(room.rules) }} · {{ room.timer_duration / 60 }} хв</span>
+              <span class="room-meta">
+                {{ rulesLabel(room.rules) }} ·
+                {{ room.timer_type === 'move' ? room.timer_duration + ' сек/хід' : Math.round(room.timer_duration / 60) + ' хв' }}
+              </span>
             </div>
             <button class="btn btn-join" @click="handleJoin(room.room_id)">Приєднатись</button>
           </div>
@@ -69,7 +72,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useLobbyStore } from '../stores/useLobbyStore'
 import { useSessionStore } from '../stores/useSessionStore'
@@ -82,8 +85,18 @@ const playerName = ref(session.playerName)
 watch(playerName, (name) => { session.playerName = name })
 const rules = ref('ukrainian')
 const timerType = ref('game_clock')
-const timerMinutes = ref(10)
+const timerValue = ref(10)
 const joinError = ref<string | null>(null)
+
+const timerLabel = computed(() =>
+  timerType.value === 'move' ? 'Час на хід (сек)' : 'Час на гру (хв)'
+)
+const timerMin = computed(() => timerType.value === 'move' ? 10 : 1)
+const timerMax = computed(() => timerType.value === 'move' ? 300 : 60)
+
+watch(timerType, (t) => {
+  timerValue.value = t === 'move' ? 60 : 10
+})
 
 onMounted(() => lobbyStore.fetchRooms())
 
@@ -97,11 +110,14 @@ function rulesLabel(r: string) {
 }
 
 async function handleCreate() {
+  const duration = timerType.value === 'move'
+    ? timerValue.value
+    : timerValue.value * 60
   const roomId = await lobbyStore.createRoom(
     playerName.value,
     rules.value,
     timerType.value,
-    timerMinutes.value * 60,
+    duration,
   )
   if (roomId) {
     router.push(`/game/${roomId}`)

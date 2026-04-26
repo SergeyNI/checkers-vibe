@@ -45,7 +45,10 @@
       "Bash(grep -E \"\\\\.\\(py|ts|tsx|vue|yml|yaml\\)$\")",
       "Bash(echo \"PID: $!\")",
       "Bash(sg docker *)",
-      "Bash(ssh -T git@github.com)"
+      "Bash(ssh -T git@github.com)",
+      "Bash(git -C /home/serhii/python/checkers-vibe diff --stat)",
+      "Bash(git -C /home/serhii/python/checkers-vibe diff .claude/settings.json)",
+      "Bash(git -C /home/serhii/python/checkers-vibe add backend/app/schemas/lobby.py frontend/src/components/GameTimer.vue frontend/src/composables/useTimer.ts frontend/src/views/LobbyView.vue .claude/settings.json)"
     ]
   }
 }

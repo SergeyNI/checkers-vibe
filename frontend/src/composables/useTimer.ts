@@ -28,7 +28,7 @@ export function useTimer(game: Ref<GameSnapshot | null>, onExpired?: (color: Col
       if (!g || g.state !== 'active') return
       const active = g.current_turn
       if (displaySeconds.value[active] > 0) {
-        displaySeconds.value[active] = +(displaySeconds.value[active] - 0.1).toFixed(1)
+        displaySeconds.value[active] = Math.max(0, +(displaySeconds.value[active] - 0.1).toFixed(1))
       } else if (onExpired && !_expiredFired.has(active)) {
         _expiredFired.add(active)
         onExpired(active)
