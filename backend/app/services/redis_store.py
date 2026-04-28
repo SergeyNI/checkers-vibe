@@ -33,17 +33,18 @@ class RedisGameStore:
     async def exists(self, game_id: str) -> bool:
         return bool(await self._redis.exists(f"game:{game_id}"))
 
-    async def save_session(self, session_id: str, game_id: str) -> None:
-        await self._redis.set(f"session:{session_id}", game_id, ex=SESSION_TTL)
-
-    async def get_game_id_by_session(self, session_id: str) -> str | None:
-        return await self._redis.get(f"session:{session_id}")
-
     async def save_player_game(self, player_id: str, game_id: str) -> None:
         await self._redis.set(f"player:{player_id}:game", game_id, ex=PLAYER_TTL)
 
     async def get_player_game(self, player_id: str) -> str | None:
         return await self._redis.get(f"player:{player_id}:game")
+
+    async def save_session_data(self, session_id: str, data: dict) -> None:
+        await self._redis.set(f"session:{session_id}", json.dumps(data), ex=SESSION_TTL)
+
+    async def get_session_data(self, session_id: str) -> dict | None:
+        raw = await self._redis.get(f"session:{session_id}")
+        return json.loads(raw) if raw else None
 
     async def close(self) -> None:
         await self._redis.aclose()

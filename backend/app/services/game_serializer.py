@@ -81,11 +81,7 @@ def _serialize_timer(timer: GameTimer) -> dict:
             "duration_seconds": timer.config.duration_seconds,
         },
         "clocks": {
-            color.value: {
-                "remaining_seconds": clock.remaining_seconds,
-                "is_running": clock.is_running,
-                "started_at": clock._started_at.isoformat() if clock._started_at else None,
-            }
+            color.value: clock.to_dict()
             for color, clock in timer.clocks.items()
         },
         "move_deadline": timer.move_deadline.isoformat() if timer.move_deadline else None,
@@ -97,15 +93,10 @@ def _deserialize_timer(data: dict) -> GameTimer:
         type=TimerType(data["config"]["type"]),
         duration_seconds=data["config"]["duration_seconds"],
     )
-    clocks = {}
-    for color_val, c in data["clocks"].items():
-        clock = PlayerClock(
-            remaining_seconds=c["remaining_seconds"],
-            is_running=c["is_running"],
-        )
-        if c.get("started_at"):
-            clock._started_at = datetime.fromisoformat(c["started_at"])
-        clocks[Color(color_val)] = clock
+    clocks = {
+        Color(color_val): PlayerClock.from_dict(c)
+        for color_val, c in data["clocks"].items()
+    }
 
     deadline = datetime.fromisoformat(data["move_deadline"]) if data.get("move_deadline") else None
     return GameTimer(config=config, clocks=clocks, move_deadline=deadline)

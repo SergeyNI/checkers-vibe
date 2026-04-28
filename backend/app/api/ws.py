@@ -20,6 +20,7 @@ from ..services.game_service import (
     resign,
     respond_draw,
 )
+from ..dependencies import get_redis_store, get_session_manager
 from ..session_manager import SessionManager
 from .lobby import _active_games, get_session
 
@@ -95,11 +96,15 @@ async def _broadcast_snapshot(game, manager: SessionManager) -> None:
             draw_reason=game.draw_reason.value if game.draw_reason else None,
         )
         await manager.broadcast(game.id, finished)
+        _active_games.pop(game.id, None)
 
 
 @router.websocket("/ws/{session_id}")
 async def websocket_endpoint(ws: WebSocket, session_id: str) -> None:
-    session = get_session(session_id)
+    store = get_redis_store()
+    manager = get_session_manager()
+
+    session = get_session(session_id) or await store.get_session_data(session_id)
     if session is None:
         await ws.close(code=4004)
         return
@@ -111,11 +116,11 @@ async def websocket_endpoint(ws: WebSocket, session_id: str) -> None:
 
     game = _active_games.get(game_id)
     if game is None:
-        await ws.close(code=4004)
-        return
-
-    from ..dependencies import get_session_manager
-    manager = get_session_manager()
+        game = await store.load(game_id)
+        if game is None:
+            await ws.close(code=4004)
+            return
+        _active_games[game_id] = game
 
     await manager.connect(session_id, game_id, ws)
 
@@ -135,25 +140,30 @@ async def websocket_endpoint(ws: WebSocket, session_id: str) -> None:
                     from_cell = Cell(data["from_cell"]["row"], data["from_cell"]["col"])
                     to_cell = Cell(data["to_cell"]["row"], data["to_cell"]["col"])
                     apply_move(game, player_id, from_cell, to_cell, now)
+                    await store.save(game)
                     await _broadcast_snapshot(game, manager)
 
                 elif msg_type == "offer_draw":
                     offer_draw(game, player_id)
+                    await store.save(game)
                     await manager.broadcast(game_id, draw_offered_msg(
                         next(p for p in game.players.values() if p.id == player_id).color.value
                     ))
 
                 elif msg_type == "respond_draw":
                     respond_draw(game, player_id, accepted=data.get("accepted", False), now=now)
+                    await store.save(game)
                     await _broadcast_snapshot(game, manager)
 
                 elif msg_type == "resign":
                     resign(game, player_id, now)
+                    await store.save(game)
                     await _broadcast_snapshot(game, manager)
 
                 elif msg_type == "check_timer":
                     if game.state == GameState.ACTIVE and game.timer.is_expired(game.current_turn, now):
                         expire_by_timeout(game, game.current_turn, now)
+                        await store.save(game)
                         await _broadcast_snapshot(game, manager)
 
                 else:
@@ -165,4 +175,8 @@ async def websocket_endpoint(ws: WebSocket, session_id: str) -> None:
     except WebSocketDisconnect:
         manager.disconnect(session_id)
         if manager.all_disconnected(game_id):
-            game.state = GameState.PAUSED
+            if game.state == GameState.FINISHED:
+                await store.delete(game_id)
+            else:
+                game.state = GameState.PAUSED
+                await store.save(game)

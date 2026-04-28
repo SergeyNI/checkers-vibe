@@ -1,10 +1,12 @@
+import asyncio
 import uuid
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, HTTPException
 
+from ..dependencies import get_redis_store
 from ..models import Color
-from ..models.game import Player
+from ..models.game import Game, Player
 from ..models.timer import TimerConfig, TimerType
 from ..schemas.lobby import (
     CreateRoomRequest,
@@ -17,18 +19,14 @@ from ..services.game_service import create_game, start_game
 
 router = APIRouter()
 
-# In-memory сховище кімнат (замінюється Redis у prod)
+# In-memory сховища (write-through кеш; авторитетне сховище — Redis)
 _waiting_rooms: dict[str, dict] = {}   # room_id → room data
 _sessions: dict[str, dict] = {}        # session_id → {game_id, player_id}
+_active_games: dict[str, Game] = {}    # game_id → Game
 
 
 @router.post("/rooms", response_model=CreateRoomResponse)
 async def create_room(body: CreateRoomRequest) -> CreateRoomResponse:
-    try:
-        timer_type = TimerType(body.timer_type)
-    except ValueError:
-        raise HTTPException(400, f"Unknown timer_type: {body.timer_type!r}")
-
     room_id = str(uuid.uuid4())
     player_id = str(uuid.uuid4())
     session_id = str(uuid.uuid4())
@@ -43,7 +41,10 @@ async def create_room(body: CreateRoomRequest) -> CreateRoomResponse:
         "timer_duration": body.timer_duration,
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
-    _sessions[session_id] = {"player_id": player_id, "game_id": None}
+    store = get_redis_store()
+    session_data = {"player_id": player_id, "game_id": None}
+    _sessions[session_id] = session_data
+    await store.save_session_data(session_id, session_data)
 
     return CreateRoomResponse(
         room_id=room_id,
@@ -86,13 +87,19 @@ async def join_room(room_id: str, body: JoinRoomRequest) -> JoinRoomResponse:
     start_game(game)
 
     game_id = game.id
+    store = get_redis_store()
 
     # Прив'язуємо сесії до гри
-    _sessions[room["creator_session"]]["game_id"] = game_id
-    _sessions[session2_id] = {"player_id": player2_id, "game_id": game_id}
-
-    # Зберігаємо гру в пам'яті (WebSocket handler зчитає її)
+    creator_session_data = {"player_id": room["creator_id"], "game_id": game_id}
+    joiner_session_data = {"player_id": player2_id, "game_id": game_id}
+    _sessions[room["creator_session"]] = creator_session_data
+    _sessions[session2_id] = joiner_session_data
     _active_games[game_id] = game
+    await asyncio.gather(
+        store.save_session_data(room["creator_session"], creator_session_data),
+        store.save_session_data(session2_id, joiner_session_data),
+        store.save(game),
+    )
 
     return JoinRoomResponse(
         room_id=room_id,
@@ -100,10 +107,6 @@ async def join_room(room_id: str, body: JoinRoomRequest) -> JoinRoomResponse:
         player_id=player2_id,
         game_id=game_id,
     )
-
-
-# Спільне in-memory сховище активних ігор (доступне з WebSocket handler)
-_active_games: dict[str, object] = {}  # game_id → Game
 
 
 def get_game(game_id: str):

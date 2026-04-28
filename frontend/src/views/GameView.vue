@@ -109,7 +109,6 @@ onMounted(() => {
 onUnmounted(() => {
   ws.disconnect()
   gameStore.$reset()
-  session.reset()
 })
 </script>
 

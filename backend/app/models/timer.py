@@ -41,6 +41,23 @@ class PlayerClock:
     def is_expired(self) -> bool:
         return self.remaining_seconds <= 0
 
+    def to_dict(self) -> dict:
+        return {
+            "remaining_seconds": self.remaining_seconds,
+            "is_running": self.is_running,
+            "started_at": self._started_at.isoformat() if self._started_at else None,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "PlayerClock":
+        clock = cls(
+            remaining_seconds=data["remaining_seconds"],
+            is_running=data["is_running"],
+        )
+        if data.get("started_at"):
+            clock._started_at = datetime.fromisoformat(data["started_at"])
+        return clock
+
 
 @dataclass
 class GameTimer:

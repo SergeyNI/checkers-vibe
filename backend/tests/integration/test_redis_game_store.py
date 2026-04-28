@@ -126,8 +126,9 @@ async def test_load_restores_pending_capture(store):
 # --- session / player keys ---
 
 async def test_session_save_and_get(store):
-    await store.save_session("sess-1", "game-1")
-    assert await store.get_game_id_by_session("sess-1") == "game-1"
+    data = {"player_id": "p-1", "game_id": "game-1"}
+    await store.save_session_data("sess-1", data)
+    assert await store.get_session_data("sess-1") == data
 
 
 async def test_player_game_save_and_get(store):

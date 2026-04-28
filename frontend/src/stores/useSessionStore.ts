@@ -5,7 +5,7 @@ import type { Color } from '../types'
 const STORAGE_KEY = 'checkers_session'
 
 function load() {
-  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) ?? 'null') } catch { return null }
+  try { return JSON.parse(sessionStorage.getItem(STORAGE_KEY) ?? 'null') } catch { return null }
 }
 
 export const useSessionStore = defineStore('session', () => {
@@ -18,9 +18,9 @@ export const useSessionStore = defineStore('session', () => {
   const connected = ref(false)
   const reconnecting = ref(false)
 
-  // persist to localStorage on any change
+  // persist to sessionStorage on any change (tab-isolated: two tabs = two sessions)
   watch([sessionId, playerId, playerColor, playerName], () => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+    sessionStorage.setItem(STORAGE_KEY, JSON.stringify({
       sessionId: sessionId.value,
       playerId: playerId.value,
       playerColor: playerColor.value,
