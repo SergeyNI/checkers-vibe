@@ -15,16 +15,18 @@ export const useSessionStore = defineStore('session', () => {
   const playerId = ref<string | null>(s?.playerId ?? null)
   const playerColor = ref<Color | null>(s?.playerColor ?? null)
   const playerName = ref<string>(s?.playerName ?? '')
+  const gameRoute = ref<string | null>(s?.gameRoute ?? null)
   const connected = ref(false)
   const reconnecting = ref(false)
 
   // persist to sessionStorage on any change (tab-isolated: two tabs = two sessions)
-  watch([sessionId, playerId, playerColor, playerName], () => {
+  watch([sessionId, playerId, playerColor, playerName, gameRoute], () => {
     sessionStorage.setItem(STORAGE_KEY, JSON.stringify({
       sessionId: sessionId.value,
       playerId: playerId.value,
       playerColor: playerColor.value,
       playerName: playerName.value,
+      gameRoute: gameRoute.value,
     }))
   })
 
@@ -39,10 +41,11 @@ export const useSessionStore = defineStore('session', () => {
     sessionId.value = null
     playerId.value = null
     playerColor.value = null
+    gameRoute.value = null
     connected.value = false
     reconnecting.value = false
     // playerName intentionally kept — user doesn't re-enter name after each game
   }
 
-  return { sessionId, playerId, playerColor, playerName, connected, reconnecting, init, reset }
+  return { sessionId, playerId, playerColor, playerName, gameRoute, connected, reconnecting, init, reset }
 })

@@ -91,9 +91,12 @@ function handleMove(from: Cell, to: Cell) {
 }
 
 function goToLobby() {
+  const isFinished = game.value?.state === 'finished'
   ws.disconnect()
   gameStore.$reset()
-  session.reset()
+  if (isFinished) {
+    session.reset()
+  }
   router.push('/')
 }
 

@@ -12,7 +12,7 @@ _BOARDS = {8: BOARD_8, 10: BOARD_10}
 class GameSerializer:
 
     @staticmethod
-    def to_dict(game: Game) -> dict:
+    def to_dict(game: Game, now: datetime | None = None) -> dict:
         return {
             "id": game.id,
             "board_size": game.board.size,
@@ -28,7 +28,7 @@ class GameSerializer:
             "current_turn": game.current_turn.value,
             "state": game.state.value,
             "history": game.history.to_json(),
-            "timer": _serialize_timer(game.timer),
+            "timer": _serialize_timer(game.timer, now),
             "pending_capture": _serialize_pending(game.pending_capture),
             "draw_offer": _serialize_draw_offer(game.draw_offer),
             "draw_reason": game.draw_reason.value if game.draw_reason else None,
@@ -74,14 +74,14 @@ class GameSerializer:
 
 # --- timer ---
 
-def _serialize_timer(timer: GameTimer) -> dict:
+def _serialize_timer(timer: GameTimer, now: datetime | None = None) -> dict:
     return {
         "config": {
             "type": timer.config.type.value,
             "duration_seconds": timer.config.duration_seconds,
         },
         "clocks": {
-            color.value: clock.to_dict()
+            color.value: clock.to_dict(now)
             for color, clock in timer.clocks.items()
         },
         "move_deadline": timer.move_deadline.isoformat() if timer.move_deadline else None,

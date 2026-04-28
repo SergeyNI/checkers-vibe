@@ -84,9 +84,10 @@ def _capture_chains_for_current_player(game) -> dict:
 
 
 async def _broadcast_snapshot(game, manager: SessionManager) -> None:
+    now = datetime.now(timezone.utc)
     chains = _capture_chains_for_current_player(game)
     valid_moves = _valid_moves_for_current_player(game)
-    msg = game_snapshot_msg(GameSerializer.to_dict(game), chains)
+    msg = game_snapshot_msg(GameSerializer.to_dict(game, now), chains)
     msg["valid_moves"] = valid_moves
     await manager.broadcast(game.id, msg)
 
@@ -173,10 +174,12 @@ async def websocket_endpoint(ws: WebSocket, session_id: str) -> None:
                 await manager.send(session_id, error_msg(str(e)))
 
     except WebSocketDisconnect:
+        now = datetime.now(timezone.utc)
         manager.disconnect(session_id)
         if manager.all_disconnected(game_id):
             if game.state == GameState.FINISHED:
                 await store.delete(game_id)
             else:
+                game.timer.stop_turn(game.current_turn, now)
                 game.state = GameState.PAUSED
                 await store.save(game)

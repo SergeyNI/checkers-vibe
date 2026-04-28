@@ -4,6 +4,11 @@
       <h1>Шашки онлайн</h1>
     </header>
 
+    <div v-if="session.sessionId && session.gameRoute" class="return-banner">
+      <span>У вас є активна гра</span>
+      <button class="btn btn-return" @click="router.push(session.gameRoute!)">Повернутись до гри →</button>
+    </div>
+
     <div class="lobby-body">
       <!-- Create room -->
       <section class="panel create-panel">
@@ -155,6 +160,38 @@ async function handleJoin(roomId: string) {
   display: flex;
   flex-direction: column;
   align-items: center;
+}
+
+.return-banner {
+  width: 100%;
+  max-width: 860px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  background: #1a3a1a;
+  border: 1px solid #3a6a3a;
+  border-radius: 8px;
+  color: #8de88d;
+  font-size: 0.95em;
+  box-sizing: border-box;
+}
+
+.btn-return {
+  background: #3a6a3a;
+  color: #fff;
+  padding: 6px 16px;
+  font-size: 0.9em;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s;
+  white-space: nowrap;
+}
+
+.btn-return:hover {
+  opacity: 0.85;
 }
 
 .lobby-header {

@@ -44,6 +44,7 @@ export const useLobbyStore = defineStore('lobby', () => {
 
       const session = useSessionStore()
       session.init(data.session_id, data.player_id, 'white' as Color, playerName)
+      session.gameRoute = `/game/${data.room_id}`
       return data.room_id
     } catch (e: unknown) {
       error.value = e instanceof Error ? e.message : 'Помилка створення кімнати'
@@ -64,6 +65,7 @@ export const useLobbyStore = defineStore('lobby', () => {
 
       const session = useSessionStore()
       session.init(data.session_id, data.player_id, 'black' as Color, playerName)
+      session.gameRoute = `/game/${data.game_id}`
       return data.game_id
     } catch (e: unknown) {
       error.value = e instanceof Error ? e.message : 'Помилка приєднання'

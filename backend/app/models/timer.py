@@ -41,9 +41,10 @@ class PlayerClock:
     def is_expired(self) -> bool:
         return self.remaining_seconds <= 0
 
-    def to_dict(self) -> dict:
+    def to_dict(self, now: datetime | None = None) -> dict:
+        remaining = self.live_remaining(now) if (now is not None and self.is_running) else self.remaining_seconds
         return {
-            "remaining_seconds": self.remaining_seconds,
+            "remaining_seconds": remaining,
             "is_running": self.is_running,
             "started_at": self._started_at.isoformat() if self._started_at else None,
         }
